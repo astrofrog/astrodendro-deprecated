@@ -13,6 +13,11 @@ def next_idx():
     return IDX_COUNTER
 
 
+def reset_idx():
+    global IDX_COUNTER
+    IDX_COUNTER = 0
+
+
 # An item is a leaf or a branch
 # An ancestor is the largest structure that an item is part of
 
@@ -24,6 +29,9 @@ class Dendrogram(object):
             self.read(*args, **kwargs)
 
     def read(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0):
+
+        # Reset ID counter
+        reset_idx()
 
         # Initialize list of ancestors
         ancestor = {}
