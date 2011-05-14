@@ -60,6 +60,10 @@ class Leaf(object):
     def to_newick(self):
         return "%i:%.3f" % (self.id, self.fmax - self.fmin)
 
+    def get_peak(self):
+        imax = np.argmax(self.f)
+        return self.x[imax], self.y[imax], self.z[imax], self.f[imax]
+
 
 class Branch(Leaf):
 
@@ -109,10 +113,29 @@ class Branch(Leaf):
             newick_items.append(item.to_newick())
         return "(%s)%s:%.3f" % (string.join(newick_items, ','), self.id, self.fmax - self.fmin)
 
+    def get_leaves(self):
+        leaves = []
+        for item in self.items:
+            if type(item) == Leaf:
+                leaves.append(item)
+            else:
+                leaves += item.get_leaves()
+        return leaves
+
 
 class Trunk(list):
+
     def to_newick(self):
         newick_items = []
         for item in self:
             newick_items.append(item.to_newick())
         return "(%s);" % string.join(newick_items, ',')
+
+    def get_leaves(self):
+        leaves = []
+        for item in self:
+            if type(item) == Leaf:
+                leaves.append(item)
+            else:
+                leaves += item.get_leaves()
+        return leaves

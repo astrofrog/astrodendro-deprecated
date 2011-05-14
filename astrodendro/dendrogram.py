@@ -2,6 +2,7 @@ import numpy as np
 
 from astrodendro.components import Trunk, Branch, Leaf
 from astrodendro.meshgrid import meshgrid_nd
+from astrodendro.newick import parse_newick
 
 IDX_COUNTER = 0
 
@@ -17,7 +18,12 @@ def next_idx():
 
 class Dendrogram(object):
 
-    def __init__(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0):
+    def __init__(self, *args, **kwargs):
+
+        if len(args) == 1:
+            self.read(*args, **kwargs)
+
+    def read(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0):
 
         # Initialize list of ancestors
         ancestor = {}
@@ -290,10 +296,13 @@ class Dendrogram(object):
             self.index_map = self.index_map[0,:,:]
             self.item_type_map = self.item_type_map[0,:,:]
 
+    def get_leaves(self):
+        return self.trunk.get_leaves()
+
     def to_newick(self):
         return self.trunk.to_newick()
 
-    def to_hdf5(self, filename, include_data=False):
+    def to_hdf5(self, filename):
 
         import h5py
 
@@ -313,11 +322,10 @@ class Dendrogram(object):
         d.attrs['IMAGE_VERSION'] = '1.2'
         d.attrs['IMAGE_MINMAXRANGE'] = [self.item_type_map.min(), self.item_type_map.max()]
 
-        if include_data:
-            d = f.create_dataset('data', data=self.data, compression=True)
-            d.attrs['CLASS'] = 'IMAGE'
-            d.attrs['IMAGE_VERSION'] = '1.2'
-            d.attrs['IMAGE_MINMAXRANGE'] = [self.data.min(), self.data.max()]
+        d = f.create_dataset('data', data=self.data, compression=True)
+        d.attrs['CLASS'] = 'IMAGE'
+        d.attrs['IMAGE_VERSION'] = '1.2'
+        d.attrs['IMAGE_MINMAXRANGE'] = [self.data.min(), self.data.max()]
 
         f.close()
 
@@ -325,33 +333,58 @@ class Dendrogram(object):
 
         import h5py
 
-        f = h5py.File(filename, 'w')
+        f = h5py.File(filename, 'r')
 
         self.n_dim = f.attrs['n_dim']
 
-        newick_tree = f['newick']
 
-        self.index_map = f['index_map']
-        self.item_type_map = f['item_type_map']
-        
         # If array is 2D, reshape to 3D
         if self.n_dim == 2:
-            self.data = f['data'].reshape(1, data.shape[0], data.shape[1])
+            self.data = f['data'].value.reshape(1, f['data'].shape[0], f['data'].shape[1])
+            self.index_map = f['index_map'].value.reshape(1, f['data'].shape[0], f['data'].shape[1])
+            self.item_type_map = f['item_type_map'].value.reshape(1, f['data'].shape[0], f['data'].shape[1])
         else:
-            self.data = f['data']
+            self.data = f['data'].value
+            self.index_map = f['index_map'].value
+            self.item_type_map = f['item_type_map'].value
 
-        def build_tree(newick):
-            
-            # Remove trailing semicolon
-            if newick.endswith(';'):
-                newick = newick[:-1]
-                
-            # Remove parenthesis
-            newick = newick[1:-1]
+        # Extract data shape
+        nz, ny, nx = self.data.shape
 
-            p = 0
-            while True:
-                p = newick.index(',')
-            
+        # Create arrays with pixel positions
+        x = np.arange(self.data.shape[2], dtype=np.int32)
+        y = np.arange(self.data.shape[1], dtype=np.int32)
+        z = np.arange(self.data.shape[0], dtype=np.int32)
+        X, Y, Z = meshgrid_nd(x, y, z)
 
-    
+        tree = parse_newick(f['newick'].value)
+
+        def construct_tree(d):
+            items = []
+            for idx in d:
+                x = X[self.index_map == idx]
+                y = Y[self.index_map == idx]
+                z = Z[self.index_map == idx]
+                f = self.data[self.index_map == idx]
+                if type(d[idx]) == tuple:
+                    sub_items = construct_tree(d[idx][0])
+                    b = Branch(sub_items, x[0], y[0], z[0], f[0], id=idx)
+                    for i in range(1,len(x)):
+                        b.add_point(x[i], y[i], z[i], f[i])
+                    items.append(b)
+                else:
+                    l = Leaf(x[0], y[0], z[0], f[0], id=idx)
+                    for i in range(1,len(x)):
+                        l.add_point(x[i], y[i], z[i], f[i])
+                    items.append(l)
+            return items
+
+        self.trunk = Trunk()
+        for item in construct_tree(tree):
+            self.trunk.append(item)
+
+        # Re-cast to 2D if original dataset was 2D
+        if self.n_dim == 2:
+            self.data = self.data[0,:,:]
+            self.index_map = self.index_map[0,:,:]
+            self.item_type_map = self.item_type_map[0,:,:]
