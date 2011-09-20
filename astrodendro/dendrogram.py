@@ -28,7 +28,7 @@ class Dendrogram(object):
         if len(args) == 1:
             self.read(*args, **kwargs)
 
-    def read(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0):
+    def read(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0, verbose=True):
 
         # Reset ID counter
         reset_idx()
@@ -59,7 +59,8 @@ class Dendrogram(object):
         # Keep only values above minimum required
         keep = flux > minimum_flux
         flux, X, Y, Z = flux[keep], X[keep], Y[keep], Z[keep]
-        print "Number of points above minimum: %i" % np.sum(keep)
+        if verbose:
+            print "Number of points above minimum: %i" % np.sum(keep)
 
         # Sort by decreasing flux
         order = np.argsort(flux)[::-1]
@@ -76,7 +77,7 @@ class Dendrogram(object):
         for i in range(len(flux)):
 
             # Print stats
-            if i % 10000 == 0:
+            if verbose and i % 10000 == 0:
                 print "%i..." % i
 
             # Check if point is adjacent to any leaf
