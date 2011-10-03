@@ -19,40 +19,37 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+# Notes:
+# - An item is a leaf or a branch
+# - An ancestor is the largest structure that an item is part of
+
 import numpy as np
 
 from astrodendro.components import Trunk, Branch, Leaf
 from astrodendro.meshgrid import meshgrid_nd
 from astrodendro.newick import parse_newick
 
-IDX_COUNTER = 0
-
-
-def next_idx():
-    global IDX_COUNTER
-    IDX_COUNTER += 1
-    return IDX_COUNTER
-
-
-def reset_idx():
-    global IDX_COUNTER
-    IDX_COUNTER = 0
-
-
-# An item is a leaf or a branch
-# An ancestor is the largest structure that an item is part of
 
 class Dendrogram(object):
 
     def __init__(self, *args, **kwargs):
 
         if len(args) == 1:
-            self.read(*args, **kwargs)
+            self._compute(*args, **kwargs)
 
-    def read(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0, verbose=True):
+        self._reset_idx()
+
+    def _reset_idx(self):
+        self._idx_counter = 0
+
+    def _next_idx(self):
+        self._idx_counter += 1
+        return self._idx_counter
+
+    def _compute(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0, verbose=True):
 
         # Reset ID counter
-        reset_idx()
+        self._reset_idx()
 
         # Initialize list of ancestors
         ancestor = {}
@@ -130,7 +127,7 @@ class Dendrogram(object):
             if n_adjacent == 0:  # Create new leaf
 
                 # Set absolute index of the new element
-                idx = next_idx()
+                idx = self._next_idx()
 
                 # Create leaf
                 leaf = Leaf(X[i], Y[i], Z[i], flux[i], id=idx)
@@ -261,7 +258,7 @@ class Dendrogram(object):
                 else:
 
                     # Set absolute index of the new element
-                    idx = next_idx()
+                    idx = self._next_idx()
 
                     # Create branch
                     branch = Branch([items[j] for j in adjacent], \
@@ -295,6 +292,9 @@ class Dendrogram(object):
                             if ancestor[a] == j:
                                 ancestor[a] = idx
 
+        if verbose and not i % 10000 == 0:
+            print "%i..." % i
+
         # Remove orphan leaves that aren't large enough
         remove = []
         for idx in items:
@@ -322,9 +322,9 @@ class Dendrogram(object):
 
         # Re-cast to 2D if original dataset was 2D
         if self.n_dim == 2:
-            self.data = self.data[0,:,:]
-            self.index_map = self.index_map[0,:,:]
-            self.item_type_map = self.item_type_map[0,:,:]
+            self.data = self.data[0, :, :]
+            self.index_map = self.index_map[0, :, :]
+            self.item_type_map = self.item_type_map[0, :, :]
 
     def get_leaves(self):
         return self.trunk.get_leaves()
@@ -367,7 +367,6 @@ class Dendrogram(object):
 
         self.n_dim = f.attrs['n_dim']
 
-
         # If array is 2D, reshape to 3D
         if self.n_dim == 2:
             self.data = f['data'].value.reshape(1, f['data'].shape[0], f['data'].shape[1])
@@ -399,12 +398,12 @@ class Dendrogram(object):
                 if type(d[idx]) == tuple:
                     sub_items = construct_tree(d[idx][0])
                     b = Branch(sub_items, x[0], y[0], z[0], f[0], id=idx)
-                    for i in range(1,len(x)):
+                    for i in range(1, len(x)):
                         b.add_point(x[i], y[i], z[i], f[i])
                     items.append(b)
                 else:
                     l = Leaf(x[0], y[0], z[0], f[0], id=idx)
-                    for i in range(1,len(x)):
+                    for i in range(1, len(x)):
                         l.add_point(x[i], y[i], z[i], f[i])
                     items.append(l)
             return items
@@ -415,6 +414,6 @@ class Dendrogram(object):
 
         # Re-cast to 2D if original dataset was 2D
         if self.n_dim == 2:
-            self.data = self.data[0,:,:]
-            self.index_map = self.index_map[0,:,:]
-            self.item_type_map = self.item_type_map[0,:,:]
+            self.data = self.data[0, :, :]
+            self.index_map = self.index_map[0, :, :]
+            self.item_type_map = self.item_type_map[0, :, :]
