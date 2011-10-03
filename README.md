@@ -6,6 +6,8 @@ of Astronomical data. The use of dendrograms to represent Astronomical
 data is described in detail in [Goodman, A. (2009,
 Nature)](http://adsabs.harvard.edu/abs/2009Natur.457...63G).
 
+**DISCLAIMER**: The code has not yet been thoroughly tested and should **not** be considered science-ready.
+
 Installing
 ==========
 
