@@ -46,8 +46,6 @@ For example:
 
     d = Dendrogram(array, minimum_flux=1.2, minimum_npix=10, minimum_delta=0.1)
 
-The defaults are
-
 Writing
 =======
 
