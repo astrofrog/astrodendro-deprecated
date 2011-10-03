@@ -36,11 +36,17 @@ There are several options that can be used when initializing a
 ``Dendrogram`` object:
 
 * ``minimum_flux`` - the minimum flux of pixels to be used in the
-  dendrogram
+  dendrogram (default is -infinity)
 * ``minimum_npix`` - the minimum number of pixels necessary to create a
-  new leaf
+  new leaf (default is 0)
 * ``minimum_delta`` - the minimum flux difference for two structures to
-  be treated as being separate
+  be treated as being separate (minimum is 0)
+
+For example:
+
+    d = Dendrogram(array, minimum_flux=1.2, minimum_npix=10, minimum_delta=0.1)
+
+The defaults are
 
 Writing
 =======
